@@ -1,3 +1,6 @@
 <launch>
-    <node pkg="hpe_udp_ctl"  type="hpe_udp_ctl_node" name="hpe2udp_node" output="screen"/>
+    <node pkg="hpe_udp_ctl"  type="hpe_udp_ctl_node" name="hpe2udp" output="screen">
+        <remap from="/hpe2udp/left_arm" to="/left_arm"/>
+        <remap from="/hpe2udp/right_arm" to="/right_arm"/>
+    </node>
 </launch>

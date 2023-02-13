@@ -53,6 +53,7 @@ class HpeToUdp
         double leftArmJointPositions[4];
         double rightArmCartesianPositions[3];
         double leftArmCartesianPositions[3];
+        
         /* UDP socket stuff*/
         int sockfd;
         char buffer[MAXLINE];

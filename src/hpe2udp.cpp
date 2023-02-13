@@ -5,10 +5,13 @@ HpeToUdp::HpeToUdp(ros::NodeHandle nh) : nodeHandle_(nh)
 {
     ROS_INFO("[HpeToUdp] Initializing node");
 
-    rightArmJoints      = nodeHandle_.subscribe<hpe_ros_msgs::JointArmCmd>(std::string("right_arm_joints"), 1, &HpeToUdp::rightArmJointsCallback, this);
-    leftArmJoints       = nodeHandle_.subscribe<hpe_ros_msgs::JointArmCmd>(std::string("left_arm_joints"), 1, &HpeToUdp::leftArmJointsCallback, this);
-    rightArmCartesian   = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(std::string("right_arm_cartesian"), 1, &HpeToUdp::rightArmCartesianCallback, this);
-    leftArmCartesian    = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(std::string("left_arm_cartesian"), 1, &HpeToUdp::leftArmCartesianCallback, this);
+    rightArmJoints      = nodeHandle_.subscribe<hpe_ros_msgs::JointArmCmd>(std::string("right_arm"), 1, &HpeToUdp::rightArmJointsCallback, this);
+    leftArmJoints       = nodeHandle_.subscribe<hpe_ros_msgs::JointArmCmd>(std::string("left_arm"), 1, &HpeToUdp::leftArmJointsCallback, this);
+    rightArmCartesian   = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(std::string("cart_right_arm"), 1, &HpeToUdp::rightArmCartesianCallback, this);
+    leftArmCartesian    = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(std::string("cart_left_arm"), 1, &HpeToUdp::leftArmCartesianCallback, this);
+
+    // Initialize UDP socket
+    init();
 }
 
 HpeToUdp::~HpeToUdp()
@@ -20,7 +23,7 @@ void HpeToUdp::init()
 {
     // Creating socket file descriptor
     if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
-        ROS_ERROR("socket creation failed");
+        ROS_ERROR("Socket creation failed");
         exit(EXIT_FAILURE);
     }
    
@@ -33,20 +36,37 @@ void HpeToUdp::init()
 }
 
 void HpeToUdp::rightArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& msg)
-{
-    std::cout<<"Right arm joints callback"<<std::endl;
-    armsControlReferencesDataPacket.rightArmJointPositionRef[0] = static_cast<double>(msg->shoulder_pitch.data); 
-    armsControlReferencesDataPacket.rightArmJointPositionRef[1] = static_cast<double>(msg->shoulder_roll.data);
-    armsControlReferencesDataPacket.rightArmJointPositionRef[2] = static_cast<double>(msg->shoulder_yaw.data);
-    armsControlReferencesDataPacket.rightArmJointPositionRef[3] = static_cast<double>(msg->elbow.data);
+{   
+    ROS_INFO_ONCE("Recieved first message from right arm joints"); 
+    double spitch, sroll, syaw, elbow; 
+    spitch  = static_cast<double>(msg->shoulder_pitch.data);
+    sroll   = static_cast<double>(msg->shoulder_roll.data);
+    syaw    = static_cast<double>(msg->shoulder_yaw.data);
+    elbow   = static_cast<double>(msg->elbow.data);
+
+    armsControlReferencesDataPacket.rightArmJointPositionRef[0] = spitch;
+    armsControlReferencesDataPacket.rightArmJointPositionRef[1] = sroll; 
+    armsControlReferencesDataPacket.rightArmJointPositionRef[2] = syaw; 
+    armsControlReferencesDataPacket.rightArmJointPositionRef[3] = elbow; 
+
+    //ROS_INFO_STREAM("Right arm joints callback: " << spitch << " " << sroll << " " << syaw << " " << elbow << ""); 
 }
 
 void HpeToUdp::leftArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& msg)
-{
-    armsControlReferencesDataPacket.leftArmCartesianPositionRef[0] = static_cast<double>(msg->shoulder_pitch.data);
-    armsControlReferencesDataPacket.leftArmCartesianPositionRef[1] = static_cast<double>(msg->shoulder_roll.data);
-    armsControlReferencesDataPacket.leftArmCartesianPositionRef[2] = static_cast<double>(msg->shoulder_yaw.data);
-    armsControlReferencesDataPacket.leftArmCartesianPositionRef[3] = static_cast<double>(msg->elbow.data);
+{   
+    ROS_INFO_ONCE("Recieved first message from left arm joints");
+    double spitch, sroll, syaw, elbow; 
+    spitch  = static_cast<double>(msg->shoulder_pitch.data);
+    sroll   = static_cast<double>(msg->shoulder_roll.data);
+    syaw    = static_cast<double>(msg->shoulder_yaw.data);
+    elbow   = static_cast<double>(msg->elbow.data);
+
+    armsControlReferencesDataPacket.leftArmCartesianPositionRef[0] = spitch; 
+    armsControlReferencesDataPacket.leftArmCartesianPositionRef[1] = sroll; 
+    armsControlReferencesDataPacket.leftArmCartesianPositionRef[2] = syaw; 
+    armsControlReferencesDataPacket.leftArmCartesianPositionRef[3] = elbow; 
+
+    //ROS_INFO_STREAM("Left arm joints callback: " << spitch << " " << sroll << " " << syaw << " " << elbow << "");
 }
 
 void HpeToUdp::rightArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::ConstPtr& msg)
@@ -59,11 +79,9 @@ void HpeToUdp::leftArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::Con
     std::cout<<"Right arm joints callback"<<std::endl;
 }
 
-
-
 void HpeToUdp::run()
 {   
-    ros::Rate r(10);
+    ros::Rate r(1);
     while(ros::ok())
     {   
         std::cout<< "Node is running!" << std::endl; 
