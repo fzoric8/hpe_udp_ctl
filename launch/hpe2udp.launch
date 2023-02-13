@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="hpe_udp_ctl"  type="hpe_udp_ctl_node" name="hpe2udp_node" output="screen"/>
+</launch>

@@ -17,6 +17,9 @@
 #include "hpe_ros_msgs/JointArmCmd.h"
 #include "hpe_ros_msgs/CartesianArmCmd.h"
 
+/* LICAS arms struct*/
+#include "StructureInterface.h"
+
 /* Define constants */
 #define PORT 8080
 #define MAXLINE 1024
@@ -32,6 +35,8 @@ class HpeToUdp
 
     private: 
 
+        ARMS_CONTROL_REFERENCES_DATA_PACKET armsControlReferencesDataPacket;
+
         /* ROS stuff */
         ros::NodeHandle nodeHandle_;
         ros::Subscriber rightArmJoints; 
@@ -40,10 +45,14 @@ class HpeToUdp
         ros::Subscriber leftArmCartesian;
 
         void rightArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& msg);
-        void leftArmJointsCallback(const hpe_ros_msgs::JointArmCmd& msg);
-        void rightArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd& msg);
-        void leftArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd& msg);
+        void leftArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& msg);
+        void rightArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::ConstPtr& msg);
+        void leftArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::ConstPtr& msg);
 
+        double rightArmJointPositions[4]; 
+        double leftArmJointPositions[4];
+        double rightArmCartesianPositions[3];
+        double leftArmCartesianPositions[3];
         /* UDP socket stuff*/
         int sockfd;
         char buffer[MAXLINE];
