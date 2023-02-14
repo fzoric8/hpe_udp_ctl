@@ -11,6 +11,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <netdb.h>
+
 
 /* ROS include*/
 #include <ros/ros.h>
@@ -21,8 +23,9 @@
 #include "StructureInterface.h"
 
 /* Define constants */
-#define PORT 8080
+#define PORT 22008 
 #define MAXLINE 1024
+#define NUM_ARM_JOINTS 4
 
 class HpeToUdp
 {
@@ -33,9 +36,33 @@ class HpeToUdp
         void init();
         void run();
 
+        int socket_publisher_ = -1;
+        /* UDP socket stuff*/
+        struct sockaddr_in addr_host_;
+        struct hostent * host;
+        bool ready_ = false;
+        bool pub_ready_ = false;
+        bool recv_ready_ = false; 
+
+        // Initialize armsCtl data packet
+        ARMS_CONTROL_REFERENCES_DATA_PACKET armsCtl={
+            .mode                           = 0, 
+            .leftArmGripperPositionRef      = 0.0,  
+            .leftArmJointPositionRef        = {0.0, 0.0, 0.0, 0.0}, 
+            .leftArmCartesianPositionRef    = {0.0, 0.0, 0.0}, 
+            .leftArmJointTorqueRef          = {0.0, 0.0, 0.0, 0.0}, 
+            .leftArmForce                   = {0.0, 0.0, 0.0},
+            .rightArmGripperPositionRef     = 0.0, 
+            .rightArmJointPositionRef       = {0.0, 0.0, 0.0, 0.0}, 
+            .rightArmCartesianPositionRef   = {0.0, 0.0, 0.0}, 
+            .rightArmJointTorqueRef         = {0.0, 0.0, 0.0, 0.0},
+            .rightArmForce                  = {0.0, 0.0, 0.0} 
+        }; 
+
+
+
     private: 
 
-        ARMS_CONTROL_REFERENCES_DATA_PACKET armsControlReferencesDataPacket;
 
         /* ROS stuff */
         ros::NodeHandle nodeHandle_;
@@ -53,13 +80,11 @@ class HpeToUdp
         double leftArmJointPositions[4];
         double rightArmCartesianPositions[3];
         double leftArmCartesianPositions[3];
-        
-        /* UDP socket stuff*/
-        int sockfd;
-        char buffer[MAXLINE];
-        struct sockaddr_in servaddr;
-        int n;
-        socklen_t len;
+
+        bool init_pub_socket();
+        bool init_sub_socket(); 
+
+
 
 };
 

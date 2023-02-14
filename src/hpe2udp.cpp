@@ -16,23 +16,69 @@ HpeToUdp::HpeToUdp(ros::NodeHandle nh) : nodeHandle_(nh)
 
 HpeToUdp::~HpeToUdp()
 {
-    close(sockfd);
+    close(socket_publisher_);
 }
 
 void HpeToUdp::init()
 {
-    // Creating socket file descriptor
-    if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
-        ROS_ERROR("Socket creation failed");
-        exit(EXIT_FAILURE);
+    ros::Time rosTime; 
+
+    pub_ready_ = init_pub_socket();
+    recv_ready_ = init_sub_socket(); 
+
+    /*armsCtl.leftArmCartesianPositionRef[0] = 0.0;
+    armsCtl.leftArmCartesianPositionRef[1] = 0.0; 
+    armsCtl.leftArmCartesianPositionRef[2] = 0.0; 
+    armsCtl.leftArmCartesianPositionRef[3] = 0.0; 
+    armsCtl.rightArmCartesianPositionRef[0] = 0.0; 
+    armsCtl.rightArmCartesianPositionRef[1] = 0.0; 
+    armsCtl.rightArmCartesianPositionRef[2] = 0.0; 
+    armsCtl.rightArmCartesianPositionRef[3] = 0.0;  */
+
+    
+    
+}
+
+bool HpeToUdp::init_pub_socket(){
+    // Open the socket in datagram mode
+    socket_publisher_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+    if (socket_publisher_ < 0) {
+        ROS_ERROR("ArmsReferencesSender: could not open socket!");
+        //close(socket_publisher_);
+        
+        return false;
     }
-   
-    memset(&servaddr, 0, sizeof(servaddr));
-       
-    // Filling server information
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(PORT);
-    servaddr.sin_addr.s_addr = INADDR_ANY;
+
+    host = gethostbyname("192.168.43.20");
+    if (host == NULL) {
+        ROS_ERROR("ArmsReferencesSender: could not get host by name!");
+        close(socket_publisher_);
+        return false;
+    }
+
+    bzero((char*)&addr_host_, sizeof(struct sockaddr_in));
+    addr_host_.sin_family = AF_INET;
+    bcopy((char*)host->h_addr, (char*)&addr_host_.sin_addr.s_addr, host->h_length);
+    addr_host_.sin_port = htons(22008);
+
+    ready_ = true;
+
+    if (ready_){
+        ROS_INFO_STREAM("Succesfuly initialized UDP socket!");
+        ros::Duration(2.0).sleep(); 
+    }
+    else{
+        ROS_ERROR("Failed to initialize UDP socket!");
+        close(socket_publisher_); 
+    }
+
+    return ready_; 
+}
+
+bool HpeToUdp::init_sub_socket()
+{
+    return false; 
 }
 
 void HpeToUdp::rightArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& msg)
@@ -43,11 +89,14 @@ void HpeToUdp::rightArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr&
     sroll   = static_cast<double>(msg->shoulder_roll.data);
     syaw    = static_cast<double>(msg->shoulder_yaw.data);
     elbow   = static_cast<double>(msg->elbow.data);
+    
+    double t = static_cast<double>(ros::Time::now().toSec());
+    armsCtl.mode = 1; 
+    armsCtl.rightArmJointPositionRef[0] = 0.0;
+    armsCtl.rightArmJointPositionRef[1] = 0.0; //sroll; 
+    armsCtl.rightArmJointPositionRef[2] = 0.0; //syaw; 
+    armsCtl.rightArmJointPositionRef[3] = 0.1*sin(3.14*t); //elbow; 
 
-    armsControlReferencesDataPacket.rightArmJointPositionRef[0] = spitch;
-    armsControlReferencesDataPacket.rightArmJointPositionRef[1] = sroll; 
-    armsControlReferencesDataPacket.rightArmJointPositionRef[2] = syaw; 
-    armsControlReferencesDataPacket.rightArmJointPositionRef[3] = elbow; 
 
     //ROS_INFO_STREAM("Right arm joints callback: " << spitch << " " << sroll << " " << syaw << " " << elbow << ""); 
 }
@@ -61,10 +110,12 @@ void HpeToUdp::leftArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& 
     syaw    = static_cast<double>(msg->shoulder_yaw.data);
     elbow   = static_cast<double>(msg->elbow.data);
 
-    armsControlReferencesDataPacket.leftArmCartesianPositionRef[0] = spitch; 
-    armsControlReferencesDataPacket.leftArmCartesianPositionRef[1] = sroll; 
-    armsControlReferencesDataPacket.leftArmCartesianPositionRef[2] = syaw; 
-    armsControlReferencesDataPacket.leftArmCartesianPositionRef[3] = elbow; 
+    double t = static_cast<double>(ros::Time::now().toSec());
+    armsCtl.leftArmJointPositionRef[0] = 0.0; //spitch; 
+    armsCtl.leftArmJointPositionRef[1] = 0.0; //sroll; 
+    armsCtl.leftArmJointPositionRef[2] = 0.0; //syaw; 
+    armsCtl.leftArmJointPositionRef[3] = 0.1*sin(3.14*t); //elbow; 
+
 
     //ROS_INFO_STREAM("Left arm joints callback: " << spitch << " " << sroll << " " << syaw << " " << elbow << "");
 }
@@ -81,20 +132,39 @@ void HpeToUdp::leftArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::Con
 
 void HpeToUdp::run()
 {   
-    ros::Rate r(1);
+    ros::Rate r(50);
+
     while(ros::ok())
     {   
         std::cout<< "Node is running!" << std::endl; 
+        if(pub_ready_)
+        {   
+
+            ROS_INFO_STREAM("Socket descriptor is: " << socket_publisher_); 
+
+            /*
+            const char *hello = "Hello from client sadsadsadassadasdasdsdasdasdadasasd";
+            char buffer[1024];    
+            int n;
+            socklen_t len;
+            */
+            
+            double t = static_cast<double>(ros::Time::now().toSec());
+
+            int s = sendto(socket_publisher_, (const char *)&armsCtl, sizeof(ARMS_CONTROL_REFERENCES_DATA_PACKET), 0, (const struct sockaddr *) &addr_host_, sizeof(addr_host_));
+            
+            ROS_INFO_STREAM("Socket send return value is: " << s); 
+
+            //n = recvfrom(socket_publisher_, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *) &addr_host_, &len);
+
+            //ROS_INFO_STREAM("Socket recv return value is: " << n);
+            //int s = sendto(socket_publisher_, (char*)&armsCtl, sizeof(ARMS_CONTROL_REFERENCES_DATA_PACKET), 0, (struct sockaddr*)&addr_host_, sizeof(struct sockaddr) < 0); 
+        }
+
+
         r.sleep(); 
-        //sendto(sockfd, (const char *)hello, strlen(hello),
-        //    MSG_CONFIRM, (const struct sockaddr *) &servaddr, 
-        //        sizeof(servaddr));
-        //std::cout<<"Hello message sent."<<std::endl;
-        //n = recvfrom(sockfd, (char *)buffer, MAXLINE, 
-        //            MSG_WAITALL, (struct sockaddr *) &servaddr,
-        //            &len);
-        //buffer[n] = '\0';
-        //std::cout<<"Server :"<<buffer<<std::endl;
+
+        
     }
 }
 
