@@ -63,7 +63,6 @@ class HpeToUdp
 
     private: 
 
-
         /* ROS stuff */
         ros::NodeHandle nodeHandle_;
         ros::Subscriber rightArmJoints; 

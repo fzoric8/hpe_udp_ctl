@@ -24,18 +24,7 @@ void HpeToUdp::init()
     ros::Time rosTime; 
 
     pub_ready_ = init_pub_socket();
-    recv_ready_ = init_sub_socket(); 
-
-    /*armsCtl.leftArmCartesianPositionRef[0] = 0.0;
-    armsCtl.leftArmCartesianPositionRef[1] = 0.0; 
-    armsCtl.leftArmCartesianPositionRef[2] = 0.0; 
-    armsCtl.leftArmCartesianPositionRef[3] = 0.0; 
-    armsCtl.rightArmCartesianPositionRef[0] = 0.0; 
-    armsCtl.rightArmCartesianPositionRef[1] = 0.0; 
-    armsCtl.rightArmCartesianPositionRef[2] = 0.0; 
-    armsCtl.rightArmCartesianPositionRef[3] = 0.0;  */
-
-    
+    recv_ready_ = init_sub_socket();     
     
 }
 
@@ -90,14 +79,14 @@ void HpeToUdp::rightArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr&
     syaw    = static_cast<double>(msg->shoulder_yaw.data);
     elbow   = static_cast<double>(msg->elbow.data);
     
+    // Looked arms from wrong direction
+    double c = -1.0;  
     double t = static_cast<double>(ros::Time::now().toSec());
     armsCtl.mode = 1; 
-    armsCtl.rightArmJointPositionRef[0] = 0.0;
-    armsCtl.rightArmJointPositionRef[1] = 0.0; //sroll; 
-    armsCtl.rightArmJointPositionRef[2] = 0.0; //syaw; 
-    armsCtl.rightArmJointPositionRef[3] = 0.1*sin(3.14*t); //elbow; 
-
-
+    armsCtl.rightArmJointPositionRef[0] = c*spitch; 
+    armsCtl.rightArmJointPositionRef[1] = c*sroll;  
+    armsCtl.rightArmJointPositionRef[2] = syaw;  
+    armsCtl.rightArmJointPositionRef[3] = c*elbow; 
     //ROS_INFO_STREAM("Right arm joints callback: " << spitch << " " << sroll << " " << syaw << " " << elbow << ""); 
 }
 
@@ -110,13 +99,13 @@ void HpeToUdp::leftArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& 
     syaw    = static_cast<double>(msg->shoulder_yaw.data);
     elbow   = static_cast<double>(msg->elbow.data);
 
+    // Looked arms from wrong direction
+    double c = -1.0; 
     double t = static_cast<double>(ros::Time::now().toSec());
-    armsCtl.leftArmJointPositionRef[0] = 0.0; //spitch; 
-    armsCtl.leftArmJointPositionRef[1] = 0.0; //sroll; 
-    armsCtl.leftArmJointPositionRef[2] = 0.0; //syaw; 
-    armsCtl.leftArmJointPositionRef[3] = 0.1*sin(3.14*t); //elbow; 
-
-
+    armsCtl.leftArmJointPositionRef[0] = c*spitch; 
+    armsCtl.leftArmJointPositionRef[1] = c*sroll;  
+    armsCtl.leftArmJointPositionRef[2] = syaw; 
+    armsCtl.leftArmJointPositionRef[3] = c*elbow;  
     //ROS_INFO_STREAM("Left arm joints callback: " << spitch << " " << sroll << " " << syaw << " " << elbow << "");
 }
 
@@ -140,31 +129,23 @@ void HpeToUdp::run()
         if(pub_ready_)
         {   
 
-            ROS_INFO_STREAM("Socket descriptor is: " << socket_publisher_); 
-
-            /*
-            const char *hello = "Hello from client sadsadsadassadasdasdsdasdasdadasasd";
-            char buffer[1024];    
-            int n;
-            socklen_t len;
-            */
+            //ROS_INFO_STREAM("Socket descriptor is: " << socket_publisher_); 
             
             double t = static_cast<double>(ros::Time::now().toSec());
 
             int s = sendto(socket_publisher_, (const char *)&armsCtl, sizeof(ARMS_CONTROL_REFERENCES_DATA_PACKET), 0, (const struct sockaddr *) &addr_host_, sizeof(addr_host_));
             
-            ROS_INFO_STREAM("Socket send return value is: " << s); 
+            if (s < 0)
+            {
+                ROS_ERROR("ArmsReferencesSender: could not send message!");
+                close(socket_publisher_);
+            }
+            //ROS_INFO_STREAM("Socket send return value is: " << s); 
 
             //n = recvfrom(socket_publisher_, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *) &addr_host_, &len);
 
-            //ROS_INFO_STREAM("Socket recv return value is: " << n);
-            //int s = sendto(socket_publisher_, (char*)&armsCtl, sizeof(ARMS_CONTROL_REFERENCES_DATA_PACKET), 0, (struct sockaddr*)&addr_host_, sizeof(struct sockaddr) < 0); 
         }
-
-
         r.sleep(); 
-
-        
     }
 }
 
