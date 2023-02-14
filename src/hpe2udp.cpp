@@ -5,10 +5,10 @@ HpeToUdp::HpeToUdp(ros::NodeHandle nh) : nodeHandle_(nh)
 {
     ROS_INFO("[HpeToUdp] Initializing node");
 
-    rightArmJoints      = nodeHandle_.subscribe<hpe_ros_msgs::JointArmCmd>(std::string("right_arm"), 1, &HpeToUdp::rightArmJointsCallback, this);
-    leftArmJoints       = nodeHandle_.subscribe<hpe_ros_msgs::JointArmCmd>(std::string("left_arm"), 1, &HpeToUdp::leftArmJointsCallback, this);
-    rightArmCartesian   = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(std::string("cart_right_arm"), 1, &HpeToUdp::rightArmCartesianCallback, this);
-    leftArmCartesian    = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(std::string("cart_left_arm"), 1, &HpeToUdp::leftArmCartesianCallback, this);
+    rightArmJointsSub      = nodeHandle_.subscribe<hpe_ros_msgs::JointArmCmd>(std::string("/right_arm"), 1, &HpeToUdp::rightArmJointsCallback, this);
+    leftArmJointsSub       = nodeHandle_.subscribe<hpe_ros_msgs::JointArmCmd>(std::string("/left_arm"), 1, &HpeToUdp::leftArmJointsCallback, this);
+    rightArmCartesianSub   = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(std::string("/cart_right_arm"), 1, &HpeToUdp::rightArmCartesianCallback, this);
+    leftArmCartesianSub    = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(std::string("/cart_left_arm"), 1, &HpeToUdp::leftArmCartesianCallback, this);
 
     // Initialize UDP socket
     init();
@@ -106,17 +106,31 @@ void HpeToUdp::leftArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& 
     armsCtl.leftArmJointPositionRef[1] = c*sroll;  
     armsCtl.leftArmJointPositionRef[2] = syaw; 
     armsCtl.leftArmJointPositionRef[3] = c*elbow;  
-    //ROS_INFO_STREAM("Left arm joints callback: " << spitch << " " << sroll << " " << syaw << " " << elbow << "");
+    ROS_INFO_STREAM("Left arm joints callback: " << spitch << " " << sroll << " " << syaw << " " << elbow << "");
 }
 
 void HpeToUdp::rightArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::ConstPtr& msg)
 {
-    std::cout<<"Right arm joints callback"<<std::endl;
+    ROS_INFO_ONCE("Recieved first cartesian message from right arm");
+    float x, y, z, vx, vy, vz;
+    x = msg->positionEE.x; y = msg->positionEE.y; z = msg->positionEE.z;
+    vx = msg->velocityEE.x; vy = msg->velocityEE.y; vz = msg->velocityEE.z;
+    armsCtl.rightArmCartesianPositionRef[0] = x; 
+    armsCtl.rightArmCartesianPositionRef[1] = y;
+    armsCtl.rightArmCartesianPositionRef[2] = z;
+    ROS_INFO_STREAM("Right arm cartesian callback: " << x << " " << y << " " << z); 
 }
 
 void HpeToUdp::leftArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::ConstPtr& msg)
 {
-    std::cout<<"Right arm joints callback"<<std::endl;
+    ROS_INFO_ONCE("Recieved first cartesian message from left arm"); 
+    float x, y, z, vx, vy, vz;
+    x = msg->positionEE.x; y = msg->positionEE.y; z = msg->positionEE.z;
+    vx = msg->velocityEE.x; vy = msg->velocityEE.y; vz = msg->velocityEE.z;
+    armsCtl.leftArmCartesianPositionRef[0] = x;
+    armsCtl.leftArmCartesianPositionRef[1] = y;
+    armsCtl.leftArmCartesianPositionRef[2] = z;
+    ROS_INFO_STREAM("Left arm cartesian callback: " << x << " " << y << " " << z);
 }
 
 void HpeToUdp::run()
@@ -125,10 +139,11 @@ void HpeToUdp::run()
 
     while(ros::ok())
     {   
-        std::cout<< "Node is running!" << std::endl; 
+        
         if(pub_ready_)
         {   
 
+            ROS_INFO_STREAM_THROTTLE(1.0, "UDP is running");
             //ROS_INFO_STREAM("Socket descriptor is: " << socket_publisher_); 
             
             double t = static_cast<double>(ros::Time::now().toSec());

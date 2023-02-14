@@ -65,20 +65,15 @@ class HpeToUdp
 
         /* ROS stuff */
         ros::NodeHandle nodeHandle_;
-        ros::Subscriber rightArmJoints; 
-        ros::Subscriber leftArmJoints;
-        ros::Subscriber rightArmCartesian;
-        ros::Subscriber leftArmCartesian;
+        ros::Subscriber rightArmJointsSub; 
+        ros::Subscriber leftArmJointsSub;
+        ros::Subscriber rightArmCartesianSub;
+        ros::Subscriber leftArmCartesianSub;
 
         void rightArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& msg);
         void leftArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& msg);
         void rightArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::ConstPtr& msg);
         void leftArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::ConstPtr& msg);
-
-        double rightArmJointPositions[4]; 
-        double leftArmJointPositions[4];
-        double rightArmCartesianPositions[3];
-        double leftArmCartesianPositions[3];
 
         bool init_pub_socket();
         bool init_sub_socket(); 

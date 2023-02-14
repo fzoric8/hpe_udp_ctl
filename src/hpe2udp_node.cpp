@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
     ros::NodeHandle nodeHandle("~"); 
     HpeToUdp hpeToUdp(nodeHandle); 
 
-    int num_threads = 2;     
+    int num_threads = 5;     
     ros::AsyncSpinner spinner(num_threads);
     spinner.start();
     //ros::spinOnce(); 
