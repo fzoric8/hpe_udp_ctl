@@ -33,7 +33,7 @@ bool HpeToUdp::init_pub_socket(){
     socket_publisher_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (socket_publisher_ < 0) {
-        ROS_ERROR("ArmsReferencesSender: could not open socket!");
+        ROS_ERROR("ArmsReferencesSender: could not open pub socket!");
         //close(socket_publisher_);
         
         return false;
@@ -51,8 +51,6 @@ bool HpeToUdp::init_pub_socket(){
     bcopy((char*)host->h_addr, (char*)&addr_host_.sin_addr.s_addr, host->h_length);
     addr_host_.sin_port = htons(22008);
 
-    ready_ = true;
-
     if (ready_){
         ROS_INFO_STREAM("Succesfuly initialized UDP socket!");
         ros::Duration(2.0).sleep(); 
@@ -62,12 +60,31 @@ bool HpeToUdp::init_pub_socket(){
         close(socket_publisher_); 
     }
 
-    return ready_; 
+    return true; 
 }
 
 bool HpeToUdp::init_sub_socket()
 {
-    return false; 
+    socket_receiver_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+    if (socket_receiver_ < 0) {
+        ROS_ERROR("ArmsReferencesSender: could not open sub socket!");
+        
+        return false;
+    }
+
+    recv_addr.sin_family = AF_INET; 
+    recv_addr.sin_addr.s_addr = INADDR_ANY; 
+    recv_addr.sin_port = htons(22009);
+
+    if (bind(socket_reciever_, (struct sockaddr*)&recv_addr, sizeof(recv_addr)) < 0){
+        ROS_ERROR("ArmsStateReciever: could not bind sub socket!");
+        close(socket_reciever_); 
+        return false; 
+    } 
+
+
+    return true; 
 }
 
 void HpeToUdp::rightArmJointsCallback(const hpe_ros_msgs::JointArmCmd::ConstPtr& msg)
@@ -148,18 +165,33 @@ void HpeToUdp::run()
             
             double t = static_cast<double>(ros::Time::now().toSec());
 
-            int s = sendto(socket_publisher_, (const char *)&armsCtl, sizeof(ARMS_CONTROL_REFERENCES_DATA_PACKET), 0, (const struct sockaddr *) &addr_host_, sizeof(addr_host_));
+            if (pub_ready_){
+                 int s = sendto(socket_publisher_, (const char *)&armsCtl, sizeof(ARMS_CONTROL_REFERENCES_DATA_PACKET), 0, (const struct sockaddr *) &addr_host_, sizeof(addr_host_));
             
-            if (s < 0)
-            {
-                ROS_ERROR("ArmsReferencesSender: could not send message!");
-                close(socket_publisher_);
-            }
-            //ROS_INFO_STREAM("Socket send return value is: " << s); 
+                if (s < 0)
+                {
+                    ROS_ERROR("ArmsReferencesSender: could not send message!");
+                    close(socket_publisher_);
+                    pub_ready_ = false; 
+                }
 
-            //n = recvfrom(socket_publisher_, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *) &addr_host_, &len);
+            }else{
+                ROS_ERROR("ArmsReferencesSender: could not send message!");
+            }
+        }
+
+        if (recv_ready_){
+
+            
+            int r = recvfrom(socket_receiver_, buffer, 1024, 0, (const struct sockaddr *) &recv_addr_, sizeof(recv_addr_));
+
+            if (r == sizeof(bla)){
+
+            }
 
         }
+        
+        
         r.sleep(); 
     }
 }

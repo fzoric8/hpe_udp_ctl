@@ -22,6 +22,8 @@
 /* LICAS arms struct*/
 #include "StructureInterface.h"
 
+/* TODO: Add structure for receiving messages from UDP */
+
 /* Define constants */
 #define PORT 22008 
 #define MAXLINE 1024
@@ -37,10 +39,13 @@ class HpeToUdp
         void run();
 
         int socket_publisher_ = -1;
+        int socket_receiver_ = -1;
+
         /* UDP socket stuff*/
         struct sockaddr_in addr_host_;
+        struct sockaddr_in recv_addr_; 
+
         struct hostent * host;
-        bool ready_ = false;
         bool pub_ready_ = false;
         bool recv_ready_ = false; 
 
@@ -57,6 +62,10 @@ class HpeToUdp
             .rightArmCartesianPositionRef   = {0.0, 0.0, 0.0}, 
             .rightArmJointTorqueRef         = {0.0, 0.0, 0.0, 0.0},
             .rightArmForce                  = {0.0, 0.0, 0.0} 
+        }; 
+
+        ARMS_CONTROL_STATE_DATA_PACKET armsState={
+
         }; 
 
 
