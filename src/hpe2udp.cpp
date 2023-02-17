@@ -5,13 +5,26 @@ HpeToUdp::HpeToUdp(ros::NodeHandle nh) : nodeHandle_(nh)
 {
     ROS_INFO("[HpeToUdp] Initializing node");
 
+    bool kalman = true; 
+    std::string cartLeftSubName, cartRightSubName; 
+    if(kalman){
+        cartLeftSubName  = "/kalman_cart_left_arm";
+        cartRightSubName = "/kalman_cart_right_arm";
+    }
+    else{
+        cartLeftSubName  = "/cart_left_arm";
+        cartRightSubName = "/cart_right_arm";
+    }
+
     rightArmJointsSub      = nodeHandle_.subscribe<hpe_ros_msgs::JointArmCmd>(std::string("/right_arm"), 1, &HpeToUdp::rightArmJointsCallback, this);
     leftArmJointsSub       = nodeHandle_.subscribe<hpe_ros_msgs::JointArmCmd>(std::string("/left_arm"), 1, &HpeToUdp::leftArmJointsCallback, this);
-    rightArmCartesianSub   = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(std::string("/cart_right_arm"), 1, &HpeToUdp::rightArmCartesianCallback, this);
-    leftArmCartesianSub    = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(std::string("/cart_left_arm"), 1, &HpeToUdp::leftArmCartesianCallback, this);
+    rightArmCartesianSub   = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(cartRightSubName, 1, &HpeToUdp::rightArmCartesianCallback, this);
+    leftArmCartesianSub    = nodeHandle_.subscribe<hpe_ros_msgs::CartesianArmCmd>(cartLeftSubName, 1, &HpeToUdp::leftArmCartesianCallback, this); 
 
     // Initialize UDP socket
     init();
+
+    ROS_INFO("[HpeToUdp] Node initialized");
 }
 
 HpeToUdp::~HpeToUdp()
@@ -25,6 +38,25 @@ void HpeToUdp::init()
 
     pub_ready_ = init_pub_socket();
     recv_ready_ = init_sub_socket();     
+
+    if (pub_ready_){
+        ROS_INFO_STREAM("Succesfuly initialized UDP pub socket!");
+        ros::Duration(1.0).sleep(); 
+    }
+    else{
+        ROS_ERROR("Failed to initialize UDP pub socket!");
+        close(socket_publisher_); 
+    }
+
+    if (recv_ready_){
+        ROS_INFO_STREAM("Succesfuly initialized UDP sub socket!");
+        ros::Duration(1.0).sleep();
+    }
+    else{
+        ROS_ERROR("Failed to successfully initialize UDP sub socket!");
+        close(socket_receiver_);
+    }
+
     
 }
 
@@ -51,15 +83,6 @@ bool HpeToUdp::init_pub_socket(){
     bcopy((char*)host->h_addr, (char*)&addr_host_.sin_addr.s_addr, host->h_length);
     addr_host_.sin_port = htons(22008);
 
-    if (ready_){
-        ROS_INFO_STREAM("Succesfuly initialized UDP socket!");
-        ros::Duration(2.0).sleep(); 
-    }
-    else{
-        ROS_ERROR("Failed to initialize UDP socket!");
-        close(socket_publisher_); 
-    }
-
     return true; 
 }
 
@@ -73,16 +96,15 @@ bool HpeToUdp::init_sub_socket()
         return false;
     }
 
-    recv_addr.sin_family = AF_INET; 
-    recv_addr.sin_addr.s_addr = INADDR_ANY; 
-    recv_addr.sin_port = htons(22009);
+    recv_addr_.sin_family = AF_INET; 
+    recv_addr_.sin_addr.s_addr = INADDR_ANY; 
+    recv_addr_.sin_port = htons(22009);
 
-    if (bind(socket_reciever_, (struct sockaddr*)&recv_addr, sizeof(recv_addr)) < 0){
+    if (bind(socket_receiver_, (struct sockaddr*)&recv_addr_, sizeof(recv_addr_)) < 0){
         ROS_ERROR("ArmsStateReciever: could not bind sub socket!");
-        close(socket_reciever_); 
+        close(socket_receiver_); 
         return false; 
     } 
-
 
     return true; 
 }
@@ -135,7 +157,7 @@ void HpeToUdp::rightArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::Co
     armsCtl.rightArmCartesianPositionRef[0] = x; 
     armsCtl.rightArmCartesianPositionRef[1] = y;
     armsCtl.rightArmCartesianPositionRef[2] = z;
-    ROS_INFO_STREAM("Right arm cartesian callback: " << x << " " << y << " " << z); 
+    ROS_INFO_STREAM_THROTTLE(1.0, "Right arm cartesian callback: " << x << " " << y << " " << z); 
 }
 
 void HpeToUdp::leftArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::ConstPtr& msg)
@@ -147,7 +169,7 @@ void HpeToUdp::leftArmCartesianCallback(const hpe_ros_msgs::CartesianArmCmd::Con
     armsCtl.leftArmCartesianPositionRef[0] = x;
     armsCtl.leftArmCartesianPositionRef[1] = y;
     armsCtl.leftArmCartesianPositionRef[2] = z;
-    ROS_INFO_STREAM("Left arm cartesian callback: " << x << " " << y << " " << z);
+    ROS_INFO_STREAM_THROTTLE(1.0, "Left arm cartesian callback: " << x << " " << y << " " << z);
 }
 
 void HpeToUdp::run()
@@ -160,7 +182,7 @@ void HpeToUdp::run()
         if(pub_ready_)
         {   
 
-            ROS_INFO_STREAM_THROTTLE(1.0, "UDP is running");
+            ROS_INFO_STREAM_THROTTLE(1.0, "UDP: sending messages");
             //ROS_INFO_STREAM("Socket descriptor is: " << socket_publisher_); 
             
             double t = static_cast<double>(ros::Time::now().toSec());
@@ -180,7 +202,11 @@ void HpeToUdp::run()
             }
         }
 
+        /*
         if (recv_ready_){
+
+            
+            ROS_INFO_STREAM_THROTTLE(1.0, "UDP: recv messages");
 
             
             int r = recvfrom(socket_receiver_, buffer, 1024, 0, (const struct sockaddr *) &recv_addr_, sizeof(recv_addr_));
@@ -190,6 +216,8 @@ void HpeToUdp::run()
             }
 
         }
+
+        */
         
         
         r.sleep(); 

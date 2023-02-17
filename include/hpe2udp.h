@@ -64,9 +64,8 @@ class HpeToUdp
             .rightArmForce                  = {0.0, 0.0, 0.0} 
         }; 
 
-        ARMS_CONTROL_STATE_DATA_PACKET armsState={
-
-        }; 
+        /*ARMS_CONTROL_STATE_DATA_PACKET armsState={
+        };*/ 
 
 
 
